@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to SQL INSERT for Oracle Database</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/sql.min.js"></script>
+
+</head>
+<body>
+
+    <div class="container">
+
+        <form>
+
+            <h1 class="text-center my-5">JSON to SQL INSERT for Oracle Database</h1>
+
+            <div class="row">
+
+                <div class="mb-3">
+                    <label for="json" class="form-label">JSON From DBeaver</label>
+                    <textarea class="form-control" id="json" rows="8"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="tableName" class="form-label">Table Name</label>
+                    <input type="text" class="form-control" id="tableName">
+                </div>
+
+            </div>
+            <div class="d-flex flex-row-reverse mb-3">
+                <button type="button" class="btn btn-primary" onclick="convert()">Convert</button>
+                <div class="d-flex align-items-center me-3">
+                <input class="form-check-input me-1" type="checkbox" id="breakLine">
+                <label class="form-check-label" for="breakLine">
+                    Break line per column
+                </label>
+                </div>
+            </div>
+
+            <pre><code id="result" class="language-sql" style="max-height:  320px;"></code></pre>
+
+            <div class="d-none flex-row-reverse" id="btnCopy">
+                <button type="button" class="btn btn-primary" onclick="copy()">Copy to clipboard</button>
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+        
+        let sql = '';
+
+        const convert = () => {
+            const json = document.getElementById('json').value;
+            const breakLine = document.getElementById('breakLine').checked;
+            const breakChar = breakLine ? '\n    ' : '';
+
+            try {
+                const object = JSON.parse(json);
+                const keys = Object.keys(object);
+                let vals = Object.values(object);
+                const dateRegExp = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/;
+                vals = vals.map(val => {
+                    if(val === null) return "NULL";
+                    if(typeof val === 'string') {
+                        if(dateRegExp.test(val)) return `TO_TIMESTAMP_TZ('${val}', 'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"')`;
+                        return `'${val}'`;
+                    }
+                    return val;
+                });
+                const tableName = document.getElementById('tableName').value;
+                sql = `INSERT INTO ${tableName} (\n    `;
+                sql += keys.join(',' + breakChar);
+                sql += "\n) VALUES (\n    ";
+                sql += vals.join(',' + breakChar);
+                sql += "\n);";
+
+                hljs.highlightAll();
+                document.getElementById('result').innerHTML = hljs.highlight(sql, { language: 'sql' }).value;
+                document.getElementById('btnCopy').classList.remove('d-none');
+                document.getElementById('btnCopy').classList.add('d-flex');
+
+            } catch (error) {
+                window.alert("JSON with invalid format.");
+            }
+        }
+
+        const copy = () => {
+            navigator.clipboard.writeText(sql);
+            window.alert("Copied to clipboard.");
+        }
+    </script>
+
+</body>
+</html>
