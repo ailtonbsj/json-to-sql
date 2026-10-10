@@ -1,102 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON to SQL INSERT for Oracle Database</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/sql.min.js"></script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON to SQL for Oracle DB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root { --primary:#1976d2; --primary-dark:#115293; --bg:#f5f5f5; --surface:#fff; --text:#212121; --muted:#616161; --border:#bdbdbd; --error:#d32f2f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:Roboto,Helvetica,Arial,sans-serif; }
+  header { background:var(--primary); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 4px rgba(0,0,0,.3); }
+  header h1 { font-size:20px; font-weight:500; margin:0; }
+  .content { display:flex; flex-direction:column; gap:16px; max-width:1100px; margin:0 auto; padding:24px 16px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:13px; font-weight:500; color:var(--muted); }
+  textarea, input[type=text] { width:100%; border:1px solid var(--border); border-radius:4px; padding:12px; font:14px 'Roboto Mono',monospace; background:var(--surface); color:var(--text); }
+  textarea { min-height:220px; resize:vertical; }
+  textarea:focus, input[type=text]:focus { outline:2px solid var(--primary); border-color:var(--primary); }
+  .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; }
+  .toolbar label.chk { display:flex; align-items:center; gap:6px; cursor:pointer; font-size:14px; }
+  .toolbar input[type=checkbox] { width:18px; height:18px; accent-color:var(--primary); }
+  .buttons { display:flex; flex-wrap:wrap; gap:10px; }
+  button { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--primary); background:var(--surface); color:var(--primary); padding:8px 16px; border-radius:4px; font:500 14px Roboto,Helvetica,Arial,sans-serif; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; }
+  button:hover { background:#e3f2fd; }
+  button.filled { background:var(--primary); color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  button.filled:hover { background:var(--primary-dark); }
+  button.turbo { background:#ff9800; border-color:#ff9800; color:#fff; }
+  button.turbo:hover { background:#f57c00; }
+  .material-symbols-outlined { font-size:20px; }
+  .output { border:1px solid var(--border); border-radius:4px; background:#fff; min-height:220px; max-height:520px; overflow:auto; }
+  .output pre { margin:0; } 
+  .output code { display:block; padding:12px; font:14px 'Roboto Mono',monospace; white-space:pre-wrap; word-break:break-all; min-height:196px; }
+  .hidden { display:none !important; }
+  #snackbar { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#323232; color:#fff; padding:12px 20px; border-radius:4px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s; }
+  #snackbar.show { opacity:1; } #snackbar.error { background:var(--error); }
+</style>
 </head>
 <body>
+<header><span class="material-symbols-outlined">database</span><h1>JSON to SQL for Oracle DB</h1></header>
 
-    <div class="container">
+<div class="content">
+  <div class="field">
+    <label for="json">JSON de entrada (gerado pelo DBeaver)</label>
+    <textarea id="json" spellcheck="false" placeholder='{ "COLUNA": 1, "OUTRA": "texto" }'></textarea>
+  </div>
+  <div class="field">
+    <label for="table">Schema e nome da tabela</label>
+    <input type="text" id="table" placeholder="public.my_table">
+  </div>
+  <div class="field hidden" id="whereField">
+    <label for="where">Colunas do WHERE (separadas por vírgula)</label>
+    <input type="text" id="where" placeholder="MY_INTEGER, MY_OTHER_ID">
+  </div>
 
-        <form>
+  <div class="toolbar">
+    <label class="chk"><input type="checkbox" id="isUpdate"> Gerar UPDATE SET (desmarcado: INSERT INTO)</label>
+    <label class="chk"><input type="checkbox" id="multiline"> Colunas e valores separados por linha</label>
+  </div>
+  <div class="buttons">
+    <button id="btnPaste"><span class="material-symbols-outlined">content_paste</span>Colar</button>
+    <button id="btnPasteDetect"><span class="material-symbols-outlined">content_paste_search</span>Colar com detecção</button>
+    <button id="btnConvert" class="filled"><span class="material-symbols-outlined">transform</span>Converter</button>
+    <button id="btnCopy"><span class="material-symbols-outlined">content_copy</span>Copiar saída</button>
+    <button id="btnTurbo" class="turbo"><span class="material-symbols-outlined">bolt</span>Turbo</button>
+  </div>
 
-            <h1 class="text-center my-5">JSON to SQL INSERT for Oracle Database</h1>
+  <div class="field">
+    <label>SQL gerado</label>
+    <div class="output"><pre><code id="out" class="language-sql"></code></pre></div>
+  </div>
+</div>
+<div id="snackbar"></div>
 
-            <div class="row">
+<script>
+const $ = id => document.getElementById(id);
+let sqlText = '';
 
-                <div class="mb-3">
-                    <label for="json" class="form-label">JSON From DBeaver</label>
-                    <textarea class="form-control" id="json" rows="8"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label for="tableName" class="form-label">Table Name</label>
-                    <input type="text" class="form-control" id="tableName">
-                </div>
+function toast(msg, err) {
+  const s = $('snackbar'); s.textContent = msg; s.className = 'show' + (err ? ' error' : '');
+  clearTimeout(toast.t); toast.t = setTimeout(() => s.className = '', 3000);
+}
 
-            </div>
-            <div class="d-flex flex-row-reverse mb-3">
-                <button type="button" class="btn btn-primary" onclick="convert()">Convert</button>
-                <div class="d-flex align-items-center me-3">
-                <input class="form-check-input me-1" type="checkbox" id="breakLine">
-                <label class="form-check-label" for="breakLine">
-                    Break line per column
-                </label>
-                </div>
-            </div>
+/* Parse preservando o texto original dos números (ex.: 9.0) */
+function parseJson(text) {
+  return JSON.parse(text, (k, v, ctx) =>
+    typeof v === 'number' ? { __num: ctx && ctx.source ? ctx.source : String(v) } : v);
+}
+function stringifyJson(data) {
+  return JSON.stringify(data, (k, v) => v && v.__num !== undefined ? `@@${v.__num}@@` : v, 2)
+    .replace(/"@@(.*?)@@"/g, '$1');
+}
 
-            <pre><code id="result" class="language-sql" style="max-height:  320px;"></code></pre>
+/* Detecta formato bruto { "select ...": [ {...} ] } */
+function detect(data) {
+  if (Array.isArray(data)) return { rows: data, key: null };
+  if (data && typeof data === 'object') {
+    const entries = Object.entries(data);
+    if (entries.length && entries.every(([, v]) => Array.isArray(v)))
+      return { rows: entries.flatMap(([, v]) => v), key: entries[0][0] };
+  }
+  return { rows: [data], key: null };
+}
+function tableFromQuery(key) {
+  const m = key && key.match(/\bfrom\s+([\w."$#]+)/i);
+  return m ? m[1] : null;
+}
 
-            <div class="d-none flex-row-reverse" id="btnCopy">
-                <button type="button" class="btn btn-primary" onclick="copy()">Copy to clipboard</button>
-            </div>
+function fmt(v) {
+  if (v === null || v === undefined) return 'NULL';
+  if (v.__num !== undefined) return v.__num;
+  if (typeof v === 'boolean') return v ? '1' : '0';
+  if (typeof v === 'string') {
+    let m = v.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z$/);
+    if (m) { // UTC -> UTC-3 (horário de Brasília)
+      const d = new Date(Date.parse(m[1] + 'Z') - 3 * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+      return `TIMESTAMP '${d}.${(m[2] || '').padEnd(6, '0')}'`;
+    }
+    m = v.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.(\d+))? ([+-])(\d{2}):?(\d{2})$/);
+    if (m) return `TIMESTAMP '${m[1]}.${(m[2] || '').padEnd(9, '0')} ${m[3]}${m[4]}:${m[5]}'`;
+    return `'${v.replace(/'/g, "''")}'`;
+  }
+  return `'${JSON.stringify(v).replace(/'/g, "''")}'`;
+}
 
-        </form>
+function buildSql(row, table, update, multi, whereCols) {
+  const entries = Object.entries(row);
+  if (!update) {
+    const sep = multi ? ',\n    ' : ',';
+    return `INSERT INTO ${table.toUpperCase()} (\n    ${entries.map(e => e[0]).join(sep)}\n) VALUES (\n    ${entries.map(e => fmt(e[1])).join(sep)}\n);`;
+  }
+  const keys = Object.keys(row), conds = [];
+  for (const w of whereCols) {
+    const k = keys.find(x => x.toUpperCase() === w.toUpperCase());
+    if (!k) throw new Error(`Coluna do WHERE "${w}" não encontrada no JSON.`);
+    const val = fmt(row[k]);
+    conds.push(val === 'NULL' ? `${k} IS NULL` : `${k} = ${val}`);
+  }
+  const wl = whereCols.map(w => w.toUpperCase());
+  const sets = entries.filter(([k]) => !wl.includes(k.toUpperCase())).map(([k, v]) => `${k} = ${fmt(v)}`);
+  if (!sets.length) throw new Error('Nenhuma coluna restante para o SET.');
+  return `UPDATE ${table} SET\n    ${sets.join(multi ? ',\n    ' : ', ')}\nWHERE\n    ${conds.join(multi ? '\n    AND ' : ' AND ')};`;
+}
 
-    </div>
+function convert() {
+  try {
+    const text = $('json').value.trim();
+    if (!text) throw new Error('Informe o JSON de entrada.');
+    const table = $('table').value.trim();
+    if (!table) throw new Error('Informe o schema e nome da tabela.');
+    const update = $('isUpdate').checked;
+    const whereCols = $('where').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (update && !whereCols.length) throw new Error('Informe as colunas do WHERE.');
+    let data;
+    try { data = parseJson(text); } catch (e) { throw new Error('JSON inválido: ' + e.message); }
+    const { rows } = detect(data);
+    if (!rows.length || rows.some(r => !r || typeof r !== 'object' || Array.isArray(r)))
+      throw new Error('O JSON deve conter um objeto (ou lista de objetos).');
+    sqlText = rows.map(r => buildSql(r, table, update, $('multiline').checked, whereCols)).join('\n\n');
+    $('out').innerHTML = hljs.highlight(sqlText, { language: 'sql' }).value;
+    return true;
+  } catch (e) { toast(e.message, true); return false; }
+}
 
-    <script>
-        
-        let sql = '';
+async function readClipboard() {
+  try { return await navigator.clipboard.readText(); }
+  catch { toast('Não foi possível ler a área de transferência. Permita o acesso ou cole manualmente (Ctrl+V).', true); return null; }
+}
+async function paste(withDetect) {
+  const text = await readClipboard();
+  if (text === null) return false;
+  if (!withDetect) { $('json').value = text; return true; }
+  try {
+    const { rows, key } = detect(parseJson(text));
+    $('json').value = stringifyJson(rows.length === 1 ? rows[0] : rows);
+    const t = tableFromQuery(key);
+    if (t) $('table').value = t;
+    return true;
+  } catch (e) { $('json').value = text; toast('JSON inválido: ' + e.message, true); return false; }
+}
+async function copy() {
+  if (!sqlText) { toast('Nada para copiar. Converta primeiro.', true); return false; }
+  try { await navigator.clipboard.writeText(sqlText); toast('SQL copiado para a área de transferência.'); return true; }
+  catch { toast('Falha ao copiar.', true); return false; }
+}
 
-        const convert = () => {
-            const json = document.getElementById('json').value;
-            const breakLine = document.getElementById('breakLine').checked;
-            const breakChar = breakLine ? '\n    ' : '';
-
-            try {
-                const object = JSON.parse(json);
-                const keys = Object.keys(object);
-                let vals = Object.values(object);
-                const dateRegExp = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/;
-                vals = vals.map(val => {
-                    if(val === null) return "NULL";
-                    if(typeof val === 'string') {
-                        if(dateRegExp.test(val)) return `TO_TIMESTAMP_TZ('${val}', 'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"')`;
-                        return `'${val}'`;
-                    }
-                    return val;
-                });
-                const tableName = document.getElementById('tableName').value;
-                sql = `INSERT INTO ${tableName} (\n    `;
-                sql += keys.join(',' + breakChar);
-                sql += "\n) VALUES (\n    ";
-                sql += vals.join(',' + breakChar);
-                sql += "\n);";
-
-                hljs.highlightAll();
-                document.getElementById('result').innerHTML = hljs.highlight(sql, { language: 'sql' }).value;
-                document.getElementById('btnCopy').classList.remove('d-none');
-                document.getElementById('btnCopy').classList.add('d-flex');
-
-            } catch (error) {
-                window.alert("JSON with invalid format.");
-            }
-        }
-
-        const copy = () => {
-            navigator.clipboard.writeText(sql);
-            window.alert("Copied to clipboard.");
-        }
-    </script>
-
+$('isUpdate').addEventListener('change', e => $('whereField').classList.toggle('hidden', !e.target.checked));
+$('btnPaste').onclick = () => paste(false);
+$('btnPasteDetect').onclick = () => paste(true);
+$('btnConvert').onclick = convert;
+$('btnCopy').onclick = copy;
+$('btnTurbo').onclick = async () => { if (await paste(true) && convert()) await copy(); };
+</script>
 </body>
 </html>
