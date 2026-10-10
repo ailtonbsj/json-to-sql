@@ -149,3 +149,36 @@ UPDATE public.my_table SET
 WHERE
     MY_INTEGER = 1;
 ```
+
+## INSERT INTO com valores enumerados
+
+A interface deve disponibilizar o botão **INSERT enumerado** para gerar um
+`INSERT INTO` usando as colunas encontradas no JSON, mas sem reutilizar os
+valores recebidos.
+
+Regras:
+
+- O botão sempre gera `INSERT INTO`, independentemente do estado do checkbox
+  de `UPDATE SET`.
+- Os valores devem ser gerados sequencialmente a partir de `1`, na ordem das
+  colunas de entrada.
+- O JSON deve ser usado somente como modelo para preservar o formato do valor:
+  - números e booleanos devem receber valores numéricos enumerados;
+  - textos devem receber o número entre aspas simples;
+  - textos com espaços à direita devem manter a quantidade de espaços;
+  - valores de data/hora devem receber um literal `TIMESTAMP` enumerado;
+  - valores nulos devem permanecer `NULL`.
+- O primeiro valor de timestamp deve usar o formato:
+  `TIMESTAMP '2026-01-04 00:00:00.000000'`, seguindo a enumeração da coluna.
+- A opção de separar colunas e valores por linha também deve ser aplicada ao
+  INSERT enumerado.
+
+Exemplo para as primeiras colunas:
+
+```
+INSERT INTO PUBLIC.MY_TABLE (
+    COLUNA_1,COLUNA_2,COLUNA_3,COLUNA_4,COLUNA_5,COLUNA_6
+) VALUES (
+    1,2,'3',TIMESTAMP '2026-01-04 00:00:00.000000',5,'6    '
+);
+```
