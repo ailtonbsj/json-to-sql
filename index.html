@@ -215,7 +215,7 @@ async function copy() {
 $('isUpdate').addEventListener('change', e => $('whereField').classList.toggle('hidden', !e.target.checked));
 $('btnPaste').onclick = () => paste(false);
 $('btnPasteDetect').onclick = () => paste(true);
-$('btnConvert').onclick = convert;
+$('btnConvert').onclick = () => convert();
 $('btnEnumerated').onclick = convertEnumerated;
 $('btnCopy').onclick = copy;
 $('btnTurbo').onclick = async () => { if (await paste(true) && convert()) await copy(); };
